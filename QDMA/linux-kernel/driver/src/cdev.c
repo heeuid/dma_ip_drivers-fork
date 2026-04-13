@@ -247,7 +247,11 @@ static inline void iocb_release(struct qdma_io_cb *iocb)
 {
 	if (iocb->pages)
 		iocb->pages = NULL;
+#if KERNEL_VERSION(4, 12, 0) <= LINUX_VERSION_CODE
+	kvfree(iocb->sgl);
+#else
 	kfree(iocb->sgl);
+#endif
 	iocb->sgl = NULL;
 	iocb->buf = NULL;
 }
@@ -290,8 +294,13 @@ static int map_user_buf_to_sgl(struct qdma_io_cb *iocb, bool write)
 		return -EINVAL;
 
 	iocb->pages_nr = 0;
+#if KERNEL_VERSION(4, 12, 0) <= LINUX_VERSION_CODE
+	sg = kvmalloc(pages_nr * (sizeof(struct qdma_sw_sg) +
+			sizeof(struct page *)), GFP_KERNEL);
+#else
 	sg = kmalloc(pages_nr * (sizeof(struct qdma_sw_sg) +
 			sizeof(struct page *)), GFP_KERNEL);
+#endif
 	if (!sg) {
 		pr_err("sgl allocation failed for %u pages", pages_nr);
 		return -ENOMEM;
